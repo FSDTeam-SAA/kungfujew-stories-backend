@@ -16,6 +16,7 @@ const approvedOrigins = new Set(
         "https://stories.carcarriergroup.com",
         "https://carcarriergroup.com",
         "https://www.carcarriergroup.com",
+        "http://localhost:3000/",
         process.env.FRONTEND_URL,
         ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
     ]
