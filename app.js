@@ -17,6 +17,7 @@ const approvedOrigins = new Set(
         "https://carcarriergroup.com",
         "https://www.carcarriergroup.com",
         "http://localhost:3000/",
+        "https://ccg-stories.vercel.app/",
         process.env.FRONTEND_URL,
         ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
     ]
