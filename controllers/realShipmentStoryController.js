@@ -11,10 +11,23 @@ const ALLOWED_SHIPMENT_STATUSES = [
   "delivered",
   "cancelled",
 ];
+const ALLOWED_SERVICE_LINES = ["vehicle", "freight", "heavy-equipment"];
+const MAX_PUBLIC_PAGE_SIZE = 50;
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const parsePositiveInteger = (value, fallback, maximum) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, maximum);
+};
+
+const normalizeServiceLine = (value) =>
+  typeof value === "string" ? value.trim().toLowerCase() : "";
 
 // Helper to check if requester is an admin
 const isRequesterAdmin = (req) => {
-  const authHeader = req.headers["authorization"];
+  const authHeader = req.headers?.["authorization"];
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return false;
   }
@@ -114,6 +127,7 @@ exports.addStory = async (req, res) => {
       pickupLocation,
       destination,
       shipmentType,
+      serviceLine,
       shipmentStatus,
       image,
       imageAlt,
@@ -134,16 +148,25 @@ exports.addStory = async (req, res) => {
       !content ||
       !pickupLocation ||
       !destination ||
-      !shipmentType
+      !shipmentType ||
+      !serviceLine
     ) {
       return res.status(400).json({
         success: false,
         message:
-          "title, slug, metaDescription, content, pickupLocation, destination, and shipmentType are required",
+          "title, slug, metaDescription, content, pickupLocation, destination, shipmentType, and serviceLine are required",
       });
     }
 
     const formattedSlug = slug.trim().toLowerCase();
+    const normalizedServiceLine = normalizeServiceLine(serviceLine);
+
+    if (!ALLOWED_SERVICE_LINES.includes(normalizedServiceLine)) {
+      return res.status(400).json({
+        success: false,
+        message: `serviceLine must be one of: ${ALLOWED_SERVICE_LINES.join(", ")}`,
+      });
+    }
 
     // Validate shipment status
     const status = shipmentStatus ? shipmentStatus.trim() : "pending";
@@ -186,6 +209,7 @@ exports.addStory = async (req, res) => {
       pickupLocation: pickupLocation.trim(),
       destination: destination.trim(),
       shipmentType: shipmentType.trim(),
+      serviceLine: normalizedServiceLine,
       shipmentStatus: status,
       image: image ? image.trim() : undefined,
       imageAlt: imageAlt ? imageAlt.trim() : undefined,
@@ -224,11 +248,16 @@ exports.addStory = async (req, res) => {
 // 2. Get All Stories with pagination, filtering, search
 exports.getStories = async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const page = parsePositiveInteger(req.query.page, 1, Number.MAX_SAFE_INTEGER);
+    const limit = parsePositiveInteger(
+      req.query.limit,
+      10,
+      MAX_PUBLIC_PAGE_SIZE
+    );
     const search = req.query.search || "";
     const shipmentStatusFilter = req.query.shipmentStatus || "All";
     const shipmentTypeFilter = req.query.shipmentType || "All";
+    const serviceLineFilter = normalizeServiceLine(req.query.serviceLine);
     const isPublishedQuery = req.query.isPublished;
 
     const isAdmin = isRequesterAdmin(req);
@@ -237,6 +266,7 @@ exports.getStories = async (req, res) => {
     // Public users can only see published stories
     if (!isAdmin) {
       query.isPublished = true;
+      query.serviceLine = { $in: ALLOWED_SERVICE_LINES };
     } else if (
       isPublishedQuery !== undefined &&
       isPublishedQuery !== "All"
@@ -255,9 +285,22 @@ exports.getStories = async (req, res) => {
       query.shipmentType = shipmentTypeFilter;
     }
 
+    if (serviceLineFilter) {
+      if (!ALLOWED_SERVICE_LINES.includes(serviceLineFilter)) {
+        return res.status(400).json({
+          success: false,
+          message: `serviceLine must be one of: ${ALLOWED_SERVICE_LINES.join(", ")}`,
+        });
+      }
+      query.serviceLine = serviceLineFilter;
+    }
+
     // Search filter across title, locations, type, slug
     if (search) {
-      const searchRegex = { $regex: search.trim(), $options: "i" };
+      const searchRegex = {
+        $regex: escapeRegex(search.trim()),
+        $options: "i",
+      };
       query.$or = [
         { title: searchRegex },
         { pickupLocation: searchRegex },
@@ -319,7 +362,10 @@ exports.getStoryByIdOrSlug = async (req, res) => {
     }
 
     // If story is unpublished, only admin can view it
-    if (!story.isPublished && !isRequesterAdmin(req)) {
+    if (
+      (!story.isPublished || !ALLOWED_SERVICE_LINES.includes(story.serviceLine)) &&
+      !isRequesterAdmin(req)
+    ) {
       return res.status(404).json({
         success: false,
         message: "Shipment story not found",
@@ -354,7 +400,10 @@ exports.getStoryBySlug = async (req, res) => {
       });
     }
 
-    if (!story.isPublished && !isRequesterAdmin(req)) {
+    if (
+      (!story.isPublished || !ALLOWED_SERVICE_LINES.includes(story.serviceLine)) &&
+      !isRequesterAdmin(req)
+    ) {
       return res.status(404).json({
         success: false,
         message: "Shipment story not found",
@@ -386,6 +435,7 @@ exports.updateStory = async (req, res) => {
       pickupLocation,
       destination,
       shipmentType,
+      serviceLine,
       shipmentStatus,
       image,
       imageAlt,
@@ -418,6 +468,17 @@ exports.updateStory = async (req, res) => {
       updateData.destination = destination.trim();
     if (shipmentType !== undefined)
       updateData.shipmentType = shipmentType.trim();
+
+    if (serviceLine !== undefined) {
+      const normalizedServiceLine = normalizeServiceLine(serviceLine);
+      if (!ALLOWED_SERVICE_LINES.includes(normalizedServiceLine)) {
+        return res.status(400).json({
+          success: false,
+          message: `serviceLine must be one of: ${ALLOWED_SERVICE_LINES.join(", ")}`,
+        });
+      }
+      updateData.serviceLine = normalizedServiceLine;
+    }
 
     // Validate shipment status if provided
     if (shipmentStatus !== undefined) {
@@ -473,6 +534,13 @@ exports.updateStory = async (req, res) => {
     if (isPublished !== undefined) {
       updateData.isPublished =
         isPublished === true || isPublished === "true";
+
+      if (updateData.isPublished && !updateData.serviceLine && !existingStory.serviceLine) {
+        return res.status(400).json({
+          success: false,
+          message: "Assign a serviceLine before publishing this story",
+        });
+      }
     }
 
     const updatedStory = await RealShipmentStory.findByIdAndUpdate(
@@ -553,6 +621,13 @@ exports.publishStory = async (req, res) => {
       isPublished = !story.isPublished;
     }
 
+    if (isPublished && !story.serviceLine) {
+      return res.status(400).json({
+        success: false,
+        message: "Assign a serviceLine before publishing this story",
+      });
+    }
+
     const updatedStory = await RealShipmentStory.findByIdAndUpdate(
       id,
       { isPublished },
@@ -600,4 +675,3 @@ exports.uploadStoryImage = async (req, res) => {
     });
   }
 };
-

@@ -54,6 +54,15 @@ const realShipmentStorySchema = new mongoose.Schema(
       required: [true, "Shipment type is required"],
       trim: true,
     },
+    serviceLine: {
+      type: String,
+      enum: {
+        values: ["vehicle", "freight", "heavy-equipment"],
+        message: "Service line must be vehicle, freight, or heavy-equipment",
+      },
+      required: [true, "Service line is required"],
+      trim: true,
+    },
     shipmentStatus: {
       type: String,
       enum: {
@@ -86,4 +95,3 @@ const RealShipmentStoryModel = mongoose.model(
 );
 
 module.exports = RealShipmentStoryModel;
-

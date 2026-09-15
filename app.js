@@ -11,9 +11,36 @@ const realShipmentStoryRouter = require("./routes/realShipmentStoryRoute")
 
 const app = express()
 
-app.use(cors())
+const approvedOrigins = new Set(
+    [
+        "https://stories.carcarriergroup.com",
+        "https://carcarriergroup.com",
+        "https://www.carcarriergroup.com",
+        process.env.FRONTEND_URL,
+        ...(process.env.CORS_ALLOWED_ORIGINS || "").split(","),
+    ]
+        .filter(Boolean)
+        .map((origin) => origin.trim())
+)
+
+app.use(cors({
+    origin(origin, callback) {
+        if (
+            process.env.NODE_ENV !== "production" ||
+            !origin ||
+            approvedOrigins.has(origin)
+        ) {
+            return callback(null, true)
+        }
+
+        return callback(createError(403, "Origin is not allowed by CORS"))
+    },
+}))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.get("/health", (req, res) => {
+    res.status(200).json({ success: true, status: "ok" })
+})
 app.use("/api/v1/auth", userRouter)
 app.use("/api/v1/projects", projectRouter)
 app.use("/api/v1/real-shipment-stories", realShipmentStoryRouter)

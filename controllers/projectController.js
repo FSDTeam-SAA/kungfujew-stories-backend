@@ -1,5 +1,7 @@
 const Project = require("../model/projectModel");
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Add Project
 exports.addProject = async (req, res) => {
     try {
@@ -45,22 +47,24 @@ exports.getProjects = async (req, res) => {
         if (categoryFilter && categoryFilter !== "All") query.category = categoryFilter;
         if (typeFilter && typeFilter !== "All") query.type = typeFilter;
 
-        let projects = await Project.find(query)
+        if (search) {
+            const words = search.trim().split(/\s+/).filter(Boolean);
+            if (words.length) {
+                query.$and = words.map((word) => ({
+                    $or: [
+                        { name: { $regex: escapeRegex(word), $options: "i" } },
+                        { category: { $regex: escapeRegex(word), $options: "i" } },
+                    ],
+                }));
+            }
+        }
+
+        const projects = await Project.find(query)
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
             .limit(limit);
 
         const total = await Project.countDocuments(query);
-
-        if (search) {
-            const words = search.trim().split(/\s+/).filter(Boolean);
-            projects = projects.filter(project =>
-                words.every(word =>
-                    project.name.toLowerCase().includes(word.toLowerCase()) ||
-                    (project.category && project.category.toLowerCase().includes(word.toLowerCase()))
-                )
-            );
-        }
 
         res.status(200).json({
             success: true,
@@ -139,4 +143,3 @@ exports.deleteProject = async (req, res) => {
         res.status(500).json({ success: false, message: "Failed to delete project" });
     }
 };
-
