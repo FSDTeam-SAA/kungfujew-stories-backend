@@ -5,7 +5,7 @@ const createError = require("http-errors")
 const { errorResponse } = require("./response/response")
 const connectDB = require("./config/dbConfig")
 const userRouter = require("./routes/userRoute")
-const projectRouter = require("./routes/projectRote")
+const projectRouter = require("./routes/projectRoute")
 const realShipmentStoryRouter = require("./routes/realShipmentStoryRoute")
 
 

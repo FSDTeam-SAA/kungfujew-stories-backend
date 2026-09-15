@@ -27,7 +27,7 @@ exports.addProject = async (req, res) => {
         res.status(201).json({ success: true, data: project });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Failed to add project", error });
+        res.status(500).json({ success: false, message: "Failed to add project" });
     }
 };
 
@@ -76,7 +76,7 @@ exports.getProjects = async (req, res) => {
         });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Failed to fetch projects", error });
+        res.status(500).json({ success: false, message: "Failed to fetch projects" });
     }
 };
 
@@ -90,7 +90,7 @@ exports.getProjectById = async (req, res) => {
         res.status(200).json({ success: true, data: project });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Failed to fetch project", error });
+        res.status(500).json({ success: false, message: "Failed to fetch project" });
     }
 };
 
@@ -103,9 +103,18 @@ exports.updateProject = async (req, res) => {
             return res.status(400).json({ success: false, message: "Type must be either 'web' or 'app'" });
         }
 
+        const updateFields = {};
+        if (name !== undefined) updateFields.name = name;
+        if (figmaLink !== undefined) updateFields.figmaLink = figmaLink;
+        if (websiteLink !== undefined) updateFields.websiteLink = websiteLink;
+        if (adminLink !== undefined) updateFields.adminLink = adminLink;
+        if (type !== undefined) updateFields.type = type;
+        if (category !== undefined) updateFields.category = category;
+        if (profile !== undefined) updateFields.profile = profile;
+
         const project = await Project.findByIdAndUpdate(
             req.params.id,
-            { name, figmaLink, websiteLink, adminLink, type, category, profile },
+            updateFields,
             { new: true, runValidators: true }
         );
 
@@ -114,7 +123,7 @@ exports.updateProject = async (req, res) => {
         res.status(200).json({ success: true, data: project });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Failed to update project", error });
+        res.status(500).json({ success: false, message: "Failed to update project" });
     }
 };
 
@@ -127,7 +136,7 @@ exports.deleteProject = async (req, res) => {
         res.status(200).json({ success: true, message: "Project deleted successfully" });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: "Failed to delete project", error });
+        res.status(500).json({ success: false, message: "Failed to delete project" });
     }
 };
 

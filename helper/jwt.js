@@ -5,7 +5,7 @@ exports.createToken = (payload, secretKey, expire) => {
     throw new Error("Payload must be a non-empty object");
   }
   if (typeof secretKey != "string" || secretKey === "") {
-    throw new Error("secretKet must be a non-empty string");
+    throw new Error("secretKey must be a non-empty string");
   }
   try {
     if (expire) {

@@ -23,7 +23,7 @@ const isRequesterAdmin = (req) => {
   try {
     const decoded = jwt.verify(
       token,
-      process.env.SECRET_KEY || "test_secret_key"
+      process.env.SECRET_KEY
     );
     return decoded && decoded.role === "admin";
   } catch (error) {
@@ -217,7 +217,6 @@ exports.addStory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to add shipment story",
-      error: error.message || error,
     });
   }
 };
@@ -292,7 +291,6 @@ exports.getStories = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch shipment stories",
-      error: error.message || error,
     });
   }
 };
@@ -337,7 +335,6 @@ exports.getStoryByIdOrSlug = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch shipment story",
-      error: error.message || error,
     });
   }
 };
@@ -373,7 +370,6 @@ exports.getStoryBySlug = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch shipment story",
-      error: error.message || error,
     });
   }
 };
@@ -506,7 +502,6 @@ exports.updateStory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update shipment story",
-      error: error.message || error,
     });
   }
 };
@@ -533,7 +528,6 @@ exports.deleteStory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete shipment story",
-      error: error.message || error,
     });
   }
 };
@@ -577,7 +571,6 @@ exports.publishStory = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update story publish status",
-      error: error.message || error,
     });
   }
 };

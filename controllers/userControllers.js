@@ -38,7 +38,8 @@ exports.sginUp = async (req, res, next) => {
         if (!newUser) {
             throw createError(400, "user not created")
         }
-        successResponse(res, { statusCode: 200, message: "registraion complited", data: newUser })
+        const safeUser = await UserModel.findById(newUser._id).select("-password")
+        successResponse(res, { statusCode: 200, message: "registraion complited", data: safeUser })
     } catch (error) {
         next(error)
     }
