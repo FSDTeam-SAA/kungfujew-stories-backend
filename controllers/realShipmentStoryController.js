@@ -127,8 +127,8 @@ exports.addStory = async (req, res) => {
       pickupLocation,
       destination,
       shipmentType,
-      serviceLine,
       shipmentStatus,
+      serviceLine,
       image,
       imageAlt,
       faqs,
@@ -211,6 +211,7 @@ exports.addStory = async (req, res) => {
       shipmentType: shipmentType.trim(),
       serviceLine: normalizedServiceLine,
       shipmentStatus: status,
+      serviceLine: serviceLine ? serviceLine.trim() : undefined,
       image: image ? image.trim() : undefined,
       imageAlt: imageAlt ? imageAlt.trim() : undefined,
       faqs: parsedFaqs,
@@ -280,9 +281,14 @@ exports.getStories = async (req, res) => {
       query.shipmentStatus = shipmentStatusFilter;
     }
 
+    // Service line filter
+    if (serviceLineFilter && serviceLineFilter !== "All" && serviceLineFilter !== "all") {
+      query.serviceLine = serviceLineFilter;
+    }
+
     // Type filter
-    if (shipmentTypeFilter && shipmentTypeFilter !== "All") {
-      query.shipmentType = shipmentTypeFilter;
+    if (shipmentTypeFilter && shipmentTypeFilter !== "All" && shipmentTypeFilter !== "all") {
+      query.shipmentType = { $regex: new RegExp(shipmentTypeFilter.trim(), "i") };
     }
 
     if (serviceLineFilter) {
@@ -468,6 +474,8 @@ exports.updateStory = async (req, res) => {
       updateData.destination = destination.trim();
     if (shipmentType !== undefined)
       updateData.shipmentType = shipmentType.trim();
+    if (serviceLine !== undefined)
+      updateData.serviceLine = serviceLine ? serviceLine.trim() : undefined;
 
     if (serviceLine !== undefined) {
       const normalizedServiceLine = normalizeServiceLine(serviceLine);

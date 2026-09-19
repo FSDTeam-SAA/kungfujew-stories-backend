@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test",
     "stories:service-line-audit": "node scripts/listStoriesMissingServiceLine.js",
-    "dev": "nodemon app.js"
+    "dev": "node init && nodemon app.js"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +23,7 @@
     "mongoose": "^8.18.3",
     "mongose": "^0.0.2-security",
     "multer": "^2.0.2",
+    "nodemailer": "^10.0.3",
     "nodemon": "^3.1.10"
   }
 }

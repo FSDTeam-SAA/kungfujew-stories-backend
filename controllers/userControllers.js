@@ -1,8 +1,10 @@
 const createError = require("http-errors")
 const { successResponse } = require("../response/response")
 const bcrypt = require("bcrypt")
+const jwt = require("jsonwebtoken")
 const UserModel = require("../model/useModel")
 const { createToken } = require("../helper/jwt")
+const { sendPasswordResetEmail } = require("../helper/emailTransporter")
 
 exports.userGet = async (req, res, next) => {
     try {
@@ -139,6 +141,107 @@ exports.changePassword = async (req, res, next) => {
         next(error)
     }
 }
+
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body
+        if (!email || !email.trim()) {
+            throw createError(400, "Email address is required")
+        }
+
+        const normalizedEmail = email.trim().toLowerCase()
+        const user = await UserModel.findOne({ email: normalizedEmail })
+        if (!user) {
+            throw createError(404, "No account found with this email address")
+        }
+
+        // Generate a signed JWT reset token valid for 1 hour
+        const resetToken = jwt.sign(
+            { id: user._id, email: user.email, purpose: "password_reset" },
+            process.env.SECRET_KEY,
+            { expiresIn: "1h" }
+        )
+
+        // Store token & 1-hour expiration date in database
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+        user.resetPasswordToken = resetToken
+        user.resetPasswordExpires = expiresAt
+        await user.save()
+
+        // Formulate frontend reset link
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000"
+        const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`
+
+        // Send email with reset URL
+        await sendPasswordResetEmail({
+            to: user.email,
+            name: user.fullName,
+            resetUrl,
+        })
+
+        successResponse(res, {
+            statusCode: 200,
+            message: "A password reset link has been sent to your email address.",
+            data: { email: user.email },
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { token, newPassword } = req.body
+        if (!token) {
+            throw createError(400, "Reset token is required")
+        }
+        if (!newPassword || newPassword.length < 6) {
+            throw createError(400, "New password must be at least 6 characters long")
+        }
+
+        // Verify token signature & expiry
+        let decoded
+        try {
+            decoded = jwt.verify(token, process.env.SECRET_KEY)
+        } catch (jwtErr) {
+            if (jwtErr.name === "TokenExpiredError") {
+                throw createError(400, "This password reset link has expired. Please request a new one.")
+            }
+            throw createError(400, "Invalid reset token. Please request a new password reset link.")
+        }
+
+        if (decoded.purpose !== "password_reset") {
+            throw createError(400, "Invalid token purpose")
+        }
+
+        // Verify against DB storage & expiration
+        const user = await UserModel.findOne({
+            _id: decoded.id,
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: new Date() },
+        })
+
+        if (!user) {
+            throw createError(400, "This reset link is invalid or has already been used. Please request a new one.")
+        }
+
+        // Hash new password and save
+        const hashPassword = await bcrypt.hash(newPassword, 10)
+        user.password = hashPassword
+        user.resetPasswordToken = null
+        user.resetPasswordExpires = null
+        await user.save()
+
+        successResponse(res, {
+            statusCode: 200,
+            message: "Password reset successfully. You can now sign in with your new password.",
+            data: {},
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 
 
 
