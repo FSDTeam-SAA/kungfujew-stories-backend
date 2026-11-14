@@ -6,7 +6,7 @@
   "scripts": {
     "test": "node --test",
     "stories:service-line-audit": "node scripts/listStoriesMissingServiceLine.js",
-    "dev": "node init && nodemon app.js"
+    "dev": "nodemon app.js"
   },
   "keywords": [],
   "author": "",
